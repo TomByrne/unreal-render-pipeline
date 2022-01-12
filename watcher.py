@@ -26,7 +26,7 @@ if username == "tombyrne":
     todo_path = "1_todo_dev"
 
 default_attempts = 2
-default_output_format = '{{level_name}}//{{sequence_name}}//{{date}}//{sequence_name}.{frame_number}'
+default_output_format = '{{scene_name}}//{{sequence_name}}//{{date}}//{sequence_name}.{frame_number}'
 default_output_path  = 'X://AWS_ReInvent_2021//GoogleDrive//Unreal_Output//'
 
 print("---------------- \nUnreal RenderDrop v0.6 \n----------------")
@@ -89,13 +89,13 @@ while True:
 
 
             def token_replace(value, start_frame=0, settings=None):
+                value = value.replace("{{project}}", project)
                 value = value.replace("{{scene}}", scene)
                 value = value.replace("{{sequence}}", sequence)
                 value = value.replace("{{scene_name}}", scene_name)
                 value = value.replace("{{level_name}}", scene_name)
                 value = value.replace("{{sequence_name}}", sequence_name)
                 value = value.replace("{{date}}", date)
-                value = value.replace("{{project}}", project)
                 
                 value = value.replace("{{output_path}}", output_path)
                 value = value.replace("{{output_format}}", output_format)
