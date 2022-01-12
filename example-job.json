@@ -1,0 +1,7 @@
+{
+    "cmd":"cmd_4.27",
+    "project": "X:\\AWS_ReInvent_2021\\4_MotionDesign\\3D\\Unreal_Projects\\Soderstrom_Control\\Soderstrom_Control.uproject",
+    "scene": "/AWS/Maps/Soderstrom_CommandCenter",
+    "sequence": "/AWS/Sequences/location1_demo",
+    "render_settings": "4.27_RenderQueueSettings_rushes_xquick_v3"
+}
