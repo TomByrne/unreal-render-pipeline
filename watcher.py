@@ -181,10 +181,20 @@ while True:
                     cmd_str = cmd_str.replace("\n", " ")
 
                     print('Beginning export: {}'.format(cmd_str))
-                    # last_render_start = time.time()
-                    res = subprocess.run(shlex.split(cmd_str), stdout=subprocess.PIPE)
+                    proc = subprocess.Popen(shlex.split(cmd_str))
+                    returncode = None
+                    while returncode == None:
+                        returncode = proc.poll()
 
-                    if res.returncode == 0:
+                        if not os.path.exists(file):
+                            print('Job file removed, cancelling: "{}"'.format(file))
+                            proc.kill()
+                            raise Exception("User cancelled")
+
+                        if returncode == None:
+                            time.sleep(3)
+
+                    if returncode == 0:
                         print('Export successful!!')
                         done_file = "{}/{}.json".format(done_path, id)
                         os.rename(file, done_file)
@@ -193,7 +203,7 @@ while True:
                     else:
                         if remaining_attempts == 0 or not os.path.exists(output_dir):
                             print('Export failed, aborting!!!')
-                            raise "Oops"
+                            raise Exception("Failed")
                         else:
                             print('Export failed, retrying...')
 
@@ -201,8 +211,9 @@ while True:
             print(str(e))
             failed_file = "{}/{}.json".format(error_path, id)
             print('Job failed, moving to: "{}"'.format(failed_file))
-            os.rename(file, failed_file)
-            Path(failed_file).touch() # update modified date/time
+            if os.path.exists(file):
+                os.rename(file, failed_file)
+                Path(failed_file).touch() # update modified date/time
 
         if setting_output_abs != None and os.path.exists(setting_output_abs):
             os.remove(setting_output_abs)
