@@ -152,9 +152,7 @@
 						"__Type": "ArrayProperty",
 						"__InnerType": "ObjectProperty",
 						"__Value": [
-							"Object:/Script/MovieRenderPipelineCore.MoviePipelineExecutorShot /Engine/MovieRenderPipeline/Editor/QueueManifest.EditorMoviePipelineQueue:MoviePipelineExecutorJob_0.MoviePipelineExecutorShot_0",
-							"Object:/Script/MovieRenderPipelineCore.MoviePipelineExecutorShot /Engine/MovieRenderPipeline/Editor/QueueManifest.EditorMoviePipelineQueue:MoviePipelineExecutorJob_0.MoviePipelineExecutorShot_1",
-							"Object:/Script/MovieRenderPipelineCore.MoviePipelineExecutorShot /Engine/MovieRenderPipeline/Editor/QueueManifest.EditorMoviePipelineQueue:MoviePipelineExecutorJob_0.MoviePipelineExecutorShot_2"
+							"Object:/Script/MovieRenderPipelineCore.MoviePipelineExecutorShot /Engine/MovieRenderPipeline/Editor/QueueManifest.EditorMoviePipelineQueue:MoviePipelineExecutorJob_0.MoviePipelineExecutorShot_0"
 						]
 					},
 					"Configuration": {
@@ -181,40 +179,6 @@
 					"InnerName": {
 						"__Type": "StrProperty",
 						"__Value": "FirstFloor_1"
-					}
-				}
-			}
-		},
-		"EditorMoviePipelineQueue:MoviePipelineExecutorJob_0.MoviePipelineExecutorShot_1": {
-			"__Class": "Class /Script/MovieRenderPipelineCore.MoviePipelineExecutorShot",
-			"__Outer": "MoviePipelineExecutorJob /Engine/MovieRenderPipeline/Editor/QueueManifest.EditorMoviePipelineQueue:MoviePipelineExecutorJob_0",
-			"__bNotAlwaysLoadedForEditorGame": true,
-			"__Value": {
-				"Properties": {
-					"OuterName": {
-						"__Type": "StrProperty",
-						"__Value": "no shot(2)"
-					},
-					"InnerName": {
-						"__Type": "StrProperty",
-						"__Value": "FirstFloor_2"
-					}
-				}
-			}
-		},
-		"EditorMoviePipelineQueue:MoviePipelineExecutorJob_0.MoviePipelineExecutorShot_2": {
-			"__Class": "Class /Script/MovieRenderPipelineCore.MoviePipelineExecutorShot",
-			"__Outer": "MoviePipelineExecutorJob /Engine/MovieRenderPipeline/Editor/QueueManifest.EditorMoviePipelineQueue:MoviePipelineExecutorJob_0",
-			"__bNotAlwaysLoadedForEditorGame": true,
-			"__Value": {
-				"Properties": {
-					"OuterName": {
-						"__Type": "StrProperty",
-						"__Value": "no shot(3)"
-					},
-					"InnerName": {
-						"__Type": "StrProperty",
-						"__Value": "FirstFloor_3"
 					}
 				}
 			}
