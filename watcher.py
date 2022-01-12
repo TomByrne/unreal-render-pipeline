@@ -178,6 +178,7 @@ while True:
                         cmd_str = f.read()
                         
                     cmd_str = token_replace(cmd_str, skip_frames, setting_output)
+                    cmd_str = cmd_str.replace("\n", " ")
 
                     print('Beginning export: {}'.format(cmd_str))
                     # last_render_start = time.time()
