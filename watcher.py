@@ -7,18 +7,21 @@ import getpass
 import subprocess
 import shlex
 import base64
+import hashlib
 from pathlib import Path
 import random
 import datetime
 
 todo_path = "1_todo"
-doing_path = "2_doing"
 done_path = "3_done"
 error_path = "4_failed"
 settings_path = "render_settings"
 cmd_path = "cmds"
 settings_asset_path = "MovieRenderPipeline"
 cmd_template = "cmd_template.ps1"
+
+alivefile_suffix = ".{{worker}}"
+alivefile_timeout = 120 # secs
 
 username = getpass.getuser()
 cwd = os.getcwd().replace("\\", "/")
@@ -32,34 +35,96 @@ default_attempts = 2
 default_output_format = '{{scene_name}}//{{sequence_name}}//{{date}}//{sequence_name}.{frame_number}'
 default_output_path  = 'X://AWS_ReInvent_2021//GoogleDrive//Unreal_Output//'
 
-print("---------------- \nUnreal RenderDrop v0.6 \n----------------")
+print("---------------- \nUnreal RenderDrop v0.7 \n----------------")
 
 print('Watching folder for jobs: "{}"'.format(todo_path))
 
-while True:
-    for file in glob.glob("{}/*.json".format(todo_path)):
+def cleanup(path):
+    if path != None and os.path.exists(path):
+        os.remove(path)
+        print('Cleanup file: {}'.format(path))
 
+def file_hash(path):
+    path_read = open(path, "r")
+    hash = hashlib.md5(path_read.read().encode("utf-8")).hexdigest()
+    path_read.close()
+    return hash
+
+while True:
+    job_files = sorted(glob.glob("{}/*.json".format(todo_path)))
+    for file in job_files:
         jobname = file[len(todo_path) + 1:len(file) - 5]
+        alive_files = glob.glob("{}/{}*".format(todo_path, jobname))
+        alive_files = list(filter(lambda f : f != file, alive_files))
+        alive_cutoff = time.time() - alivefile_timeout
+        if len(alive_files) > 0:
+            modtime = os.path.getmtime(alive_files[0])
+            if modtime < alive_cutoff:
+                print('Job alive file is more than {}s old, taking job: "{}"'.format(alivefile_timeout, file))
+            else:
+                # skip job already in progress
+                continue
+        else:
+            print('Job found: "{}"'.format(file))
 
         date = datetime.date.today().strftime("%Y.%m.%d")
-
-        print('Job found: "{}"'.format(file))
 
         id = "{}.{}.{:03d}".format(username, jobname, random.randint(0, 999))
 
         setting_output_abs = None
+        project = None
+        
+        def token_replace(value, start_frame=0, settings=None):
+            value = value.replace("{{worker}}", username)
+            value = value.replace("{{date}}", date)
+
+            if project != None:
+                value = value.replace("{{project}}", project)
+                value = value.replace("{{scene}}", scene)
+                value = value.replace("{{sequence}}", sequence)
+                value = value.replace("{{scene_name}}", scene_name)
+                value = value.replace("{{level_name}}", scene_name)
+                value = value.replace("{{sequence_name}}", sequence_name)
+            
+                value = value.replace("{{output_path}}", output_path)
+                value = value.replace("{{output_format}}", output_format)
+                
+                value = value.replace("{{width}}", str(width))
+                value = value.replace("{{height}}", str(height))
+                value = value.replace("{{resolution_base64}}", resolution_base64)
+
+            if start_frame != None:
+                value = value.replace("{{start_frame}}", str(start_frame))
+                value = value.replace("{{custom_frame_range}}", str( 1 if start_frame != 0 else 0))
+
+            if settings != None:
+                value = value.replace("{{render_settings}}", settings)
+            return value
+
+        alivefile = None
+
+        def update_alive():
+            newalive = todo_path + "/" + jobname + token_replace(alivefile_suffix)
+            if newalive == alivefile:
+                Path(alivefile).touch()
+                return
+
+            if alivefile != None and os.path.exists(alivefile):
+                os.remove(alivefile)
+            
+            open(newalive, 'a').close()
+            return newalive
+        
         
         try:
-            ## Move file to 'doing' folder
-            doing_file = "{}/{}.json".format(doing_path, id)
-            print('Moving job to doing: "{}"'.format(doing_file))
-            os.rename(file, doing_file)
-            Path(doing_file).touch() # update modified date/time
-            print("Move success")
-            file = doing_file
+            
+            alivefile = update_alive()
 
-            with open(file, "r") as read_file:
-                data = json.load(read_file)
+            file_read = open(file, "r")
+            data = json.load(file_read)
+            file_read.close()
+
+            job_hash = file_hash(file)
 
             attempts = data.get("attempts")
             if attempts == None:
@@ -80,6 +145,7 @@ while True:
             resolution_bytes = width.to_bytes(4, byteorder="little") + height.to_bytes(4, byteorder="little")
             resolution_base64 = base64.b64encode(resolution_bytes).decode("utf-8").upper()
 
+            
                 
             ## Resolve UE project file
             project = data.get('project')
@@ -104,31 +170,6 @@ while True:
             sequence_path = '{}/Content{}.uasset'.format(project_dir, sequence)#.replace('\\', '/')
             if not os.path.exists(sequence_path):
                 raise Exception('Failed to locate sequence asset: {}'.format(sequence_path))
-
-
-            def token_replace(value, start_frame=0, settings=None):
-                value = value.replace("{{project}}", project)
-                value = value.replace("{{scene}}", scene)
-                value = value.replace("{{sequence}}", sequence)
-                value = value.replace("{{scene_name}}", scene_name)
-                value = value.replace("{{level_name}}", scene_name)
-                value = value.replace("{{sequence_name}}", sequence_name)
-                value = value.replace("{{date}}", date)
-                
-                value = value.replace("{{output_path}}", output_path)
-                value = value.replace("{{output_format}}", output_format)
-                
-                value = value.replace("{{width}}", str(width))
-                value = value.replace("{{height}}", str(height))
-                value = value.replace("{{resolution_base64}}", resolution_base64)
-
-                if start_frame != None:
-                    value = value.replace("{{start_frame}}", str(start_frame))
-                    value = value.replace("{{custom_frame_range}}", str( 1 if start_frame != 0 else 0))
-
-                if settings != None:
-                    value = value.replace("{{render_settings}}", settings)
-                return value
 
             
             ## Find output path
@@ -205,22 +246,27 @@ while True:
                     print('Beginning export: {}'.format(cmd_str))
                     proc = subprocess.Popen(shlex.split(cmd_str))
                     returncode = None
+                    cancelled = False
                     while returncode == None:
                         returncode = proc.poll()
 
-                        if not os.path.exists(file):
-                            print('Job file removed, cancelling: "{}"'.format(file))
+                        if not os.path.exists(file) or job_hash != file_hash(file):
+                            hash2 = file_hash(file)
                             proc.kill()
-                            raise Exception("User cancelled")
+                            cancelled = True
+                            break
 
                         if returncode == None:
+                            alivefile = update_alive()
                             time.sleep(3)
 
-                    if returncode == 0:
-                        print('Export successful!!')
+                    if cancelled:
+                        print('Job file removed/changed, job cancelled: "{}"'.format(file))
+                    elif returncode == 0:
                         done_file = "{}/{}.json".format(done_path, id)
+                        print('Export successful!!')
+                        print('Moving job file to {}'.format(done_file))
                         os.rename(file, done_file)
-                        Path(done_file).touch() # update modified date/time
                         remaining_attempts = 0
                     else:
                         if remaining_attempts == 0 or not os.path.exists(output_dir):
@@ -233,13 +279,11 @@ while True:
             print(str(e))
             failed_file = "{}/{}.json".format(error_path, id)
             print('Job failed, moving to: "{}"'.format(failed_file))
-            if os.path.exists(file):
-                os.rename(file, failed_file)
-                Path(failed_file).touch() # update modified date/time
+            os.rename(file, failed_file)
+            Path(failed_file).touch() # update modified date/time
 
-        if setting_output_abs != None and os.path.exists(setting_output_abs):
-            os.remove(setting_output_abs)
-            
+        cleanup(setting_output_abs)
+        cleanup(alivefile)
 
         break # So that glob loop starts again
             
