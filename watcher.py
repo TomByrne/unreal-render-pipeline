@@ -4,15 +4,17 @@ import time
 import json
 import os
 import getpass
-import subprocess
+from subprocess import Popen, PIPE
 import shlex
 import base64
 import hashlib
 from pathlib import Path
 import random
 import datetime
+import re
 
 todo_path = "1_todo"
+cancelled_path = "2_cancelled"
 done_path = "3_done"
 error_path = "4_failed"
 settings_path = "render_settings"
@@ -43,6 +45,8 @@ def cleanup(path):
     if path != None and os.path.exists(path):
         os.remove(path)
         print('Cleanup file: {}'.format(path))
+    else:
+        print('Skipped cleanup: {} {}'.format(path, os.path.exists(path)))
 
 def file_hash(path):
     path_read = open(path, "r")
@@ -53,8 +57,10 @@ def file_hash(path):
 while True:
     job_files = sorted(glob.glob("{}/*.json".format(todo_path)))
     for file in job_files:
-        jobname = file[len(todo_path) + 1:len(file) - 5]
-        alive_files = glob.glob("{}/{}*".format(todo_path, jobname))
+        job_name = file[len(todo_path) + 1:len(file) - 5]
+        job_name = re.search('^(.*?)(_[\d]+)?$', job_name).group(1) # strip trailing '_0', for when job are re-added from complete folder
+
+        alive_files = glob.glob("{}/{}*".format(todo_path, job_name))
         alive_files = list(filter(lambda f : f != file, alive_files))
         alive_cutoff = time.time() - alivefile_timeout
         if len(alive_files) > 0:
@@ -69,7 +75,7 @@ while True:
 
         date = datetime.date.today().strftime("%Y.%m.%d")
 
-        id = "{}.{}.{:03d}".format(username, jobname, random.randint(0, 999))
+        id = "{}.{}.{:03d}".format(username, job_name, random.randint(0, 999))
 
         setting_output_abs = None
         project = None
@@ -104,7 +110,7 @@ while True:
         alivefile = None
 
         def update_alive():
-            newalive = todo_path + "/" + jobname + token_replace(alivefile_suffix)
+            newalive = todo_path + "/" + job_name + token_replace(alivefile_suffix)
             if newalive == alivefile:
                 Path(alivefile).touch()
                 return newalive
@@ -114,6 +120,16 @@ while True:
             
             open(newalive, 'a').close()
             return newalive
+
+        def save_job(dir):
+            path = "{}/{}.json".format(dir, job_name)
+            count = 0
+            while os.path.exists(path):
+                path = "{}/{}_{}.json".format(dir, job_name, count)
+                count += 1
+
+            with open(path, 'w') as file_write:
+                json.dump(data, file_write, indent=4)
         
         
         try:
@@ -129,6 +145,11 @@ while True:
             attempts = data.get("attempts")
             if attempts == None:
                 attempts = default_attempts
+
+            renders = data.get("renders")
+            if renders == None or not isinstance(renders, list):
+                renders = []
+                data["renders"] = renders
 
             width = data.get("width")
             if width == None:
@@ -192,6 +213,16 @@ while True:
             if isinstance(settings_configs, str):
                 settings_configs = [settings_configs]
 
+            render = {
+                "worker": username,
+                "timestamp": time.time(),
+                "output": str(output_dir.absolute()),
+                "width": width,
+                "height": height,
+                "errors": [],
+            }
+            renders.append(render)
+
             ## Loop over all configs and export each
             for setting_input in settings_configs:
 
@@ -242,7 +273,7 @@ while True:
                     cmd_str = cmd_str.replace("\n", " ")
 
                     print('Beginning export: {}'.format(cmd_str))
-                    proc = subprocess.Popen(shlex.split(cmd_str))
+                    proc = Popen(shlex.split(cmd_str), stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True, bufsize=10)
                     returncode = None
                     cancelled = False
                     while returncode == None:
@@ -259,14 +290,23 @@ while True:
                             time.sleep(3)
 
                     if cancelled:
+                        render["outcome"] = "cancelled"
                         print('Job file removed/changed, job cancelled: "{}"'.format(file))
-                    elif returncode == 0:
-                        done_file = "{}/{}.json".format(done_path, id)
-                        print('Export successful!!')
-                        print('Moving job file to {}'.format(done_file))
-                        os.rename(file, done_file)
+                        save_job(cancelled_path)
                         remaining_attempts = 0
+
+                    elif returncode == 0:
+                        render["outcome"] = "success"
+                        print('Export successful!!')
+                        save_job(done_path)
+                        remaining_attempts = 0
+
                     else:
+                        render["errors"].append({
+                            "code": returncode,
+                            "stderr": proc.stderr.read()
+                        })
+                        render["outcome"] = "failed"
                         if remaining_attempts == 0 or not os.path.exists(output_dir):
                             print('Export failed, aborting!!!')
                             raise Exception("Failed")
@@ -275,13 +315,14 @@ while True:
 
         except Exception as e:
             print(str(e))
-            failed_file = "{}/{}.json".format(error_path, id)
-            print('Job failed, moving to: "{}"'.format(failed_file))
-            os.rename(file, failed_file)
-            Path(failed_file).touch() # update modified date/time
+            print('Job failed!')
+            render["error"] = str(e)
+            save_job(error_path)
 
         cleanup(setting_output_abs)
         cleanup(alivefile)
+        if os.path.exists(file) and job_hash == file_hash(file):
+            cleanup(file)
 
         break # So that glob loop starts again
             
