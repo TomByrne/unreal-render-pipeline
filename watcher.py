@@ -22,7 +22,7 @@ cmd_path = "cmds"
 settings_asset_path = "MovieRenderPipeline"
 cmd_template = "cmd_template.ps1"
 
-alivefile_suffix = "   [ {{worker}} ] {{duration}}s {{frames}}f"
+alivefile_suffix = "   [ {{worker}} ]   {{duration}}s {{frames}}f"
 alivefile_timeout = 120 # secs
 
 username = getpass.getuser()
@@ -57,9 +57,8 @@ def file_hash(path):
 while True:
     job_files = sorted(glob.glob("{}/*.json".format(todo_path)))
     for file in job_files:
-        job_file = file[len(todo_path) + 1:0]
-        job_name = job_file[0:len(job_file) - 5]
-        job_name = re.search('^(.*?)(_[\d]+)?$', job_name).group(1) # strip trailing '_0', for when job are re-added from complete folder
+        job_file = file[len(todo_path) + 1:len(file)]
+        job_name = re.search('^(.*?)(_[\d]+)?.json$', job_file).group(1) # strip trailing '_0', for when job are re-added from complete folder
 
         alive_files = glob.glob("{}/{}*".format(todo_path, job_name))
         alive_files = list(filter(lambda f : f != file and os.path.splitext(f)[1] != ".json", alive_files))
