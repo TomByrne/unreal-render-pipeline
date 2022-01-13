@@ -22,7 +22,7 @@ cmd_path = "cmds"
 settings_asset_path = "MovieRenderPipeline"
 cmd_template = "cmd_template.ps1"
 
-alivefile_suffix = ".{{worker}}"
+alivefile_suffix = "   [ {{worker}} ] {{duration}}s {{frames}}f"
 alivefile_timeout = 120 # secs
 
 username = getpass.getuser()
@@ -57,16 +57,18 @@ def file_hash(path):
 while True:
     job_files = sorted(glob.glob("{}/*.json".format(todo_path)))
     for file in job_files:
-        job_name = file[len(todo_path) + 1:len(file) - 5]
+        job_file = file[len(todo_path) + 1:0]
+        job_name = job_file[0:len(job_file) - 5]
         job_name = re.search('^(.*?)(_[\d]+)?$', job_name).group(1) # strip trailing '_0', for when job are re-added from complete folder
 
         alive_files = glob.glob("{}/{}*".format(todo_path, job_name))
-        alive_files = list(filter(lambda f : f != file, alive_files))
+        alive_files = list(filter(lambda f : f != file and os.path.splitext(f)[1] != ".json", alive_files))
         alive_cutoff = time.time() - alivefile_timeout
         if len(alive_files) > 0:
             modtime = os.path.getmtime(alive_files[0])
             if modtime < alive_cutoff:
                 print('Job alive file is more than {}s old, taking job: "{}"'.format(alivefile_timeout, file))
+                os.remove(alive_files[0])
             else:
                 # skip job already in progress
                 continue
@@ -107,18 +109,21 @@ while True:
                 value = value.replace("{{render_settings}}", settings)
             return value
 
-        alivefile = None
+        alive_file = None
 
-        def update_alive():
-            newalive = todo_path + "/" + job_name + token_replace(alivefile_suffix)
-            if newalive == alivefile:
-                Path(alivefile).touch()
+        def update_alive(duration = 0, frames = 0):
+            newalive = file + token_replace(alivefile_suffix)
+            newalive = newalive.replace("{{duration}}", str(round(duration)))
+            newalive = newalive.replace("{{frames}}", str(frames))
+            if newalive == alive_file:
+                Path(alive_file).touch()
                 return newalive
 
-            if alivefile != None and os.path.exists(alivefile):
-                os.remove(alivefile)
-            
-            open(newalive, 'a').close()
+            if alive_file != None and os.path.exists(alive_file):
+                Path(alive_file).rename(newalive)
+            else:
+                open(newalive, 'a').close()
+
             return newalive
 
         def save_job(dir):
@@ -134,7 +139,7 @@ while True:
         
         try:
             
-            alivefile = update_alive()
+            alive_file = update_alive()
 
             file_read = open(file, "r")
             data = json.load(file_read)
@@ -207,33 +212,38 @@ while True:
             print('Output folder: "{}"'.format(output_dir.absolute()))
 
             def get_output_files_since(time):
-                return [f for f in os.listdir(output_dir) if os.path.getmtime(os.path.join(output_dir, f)) > time]
+                try:
+                    return len([f for f in os.listdir(output_dir) if os.path.getmtime(os.path.join(output_dir, f)) > time])
+                except:
+                    return 0
+                
 
             settings_configs = data.get('render_settings')
             if isinstance(settings_configs, str):
                 settings_configs = [settings_configs]
 
-            render = {
-                "worker": username,
-                "timestamp": time.time(),
-                "output": str(output_dir.absolute()),
-                "width": width,
-                "height": height,
-                "errors": [],
-            }
-            renders.append(render)
-
             ## Loop over all configs and export each
             for setting_input in settings_configs:
-
+                
                 remaining_attempts = attempts
                 last_render_start = time.time()
+                
+                render = {
+                    "settings": setting_input,
+                    "worker": username,
+                    "time": last_render_start,
+                    "output": str(output_dir.absolute()),
+                    "width": width,
+                    "height": height,
+                    "errors": [],
+                }
+                renders.append(render)
 
                 while remaining_attempts > 0:
 
                     skip_frames = 0
                     if setting_input != settings_configs[0]:
-                        skip_frames = len(get_output_files_since(last_render_start))
+                        skip_frames = get_output_files_since(last_render_start)
                         print("Resuming render from frame: {}".format(skip_frames))
 
                     remaining_attempts = remaining_attempts - 1
@@ -278,6 +288,10 @@ while True:
                     cancelled = False
                     while returncode == None:
                         returncode = proc.poll()
+                        duration = time.time() - last_render_start
+                        frames = get_output_files_since(last_render_start)
+                        render["duration"] = duration
+                        render["frames_done"] = frames
 
                         if not os.path.exists(file) or job_hash != file_hash(file):
                             hash2 = file_hash(file)
@@ -286,8 +300,8 @@ while True:
                             break
 
                         if returncode == None:
-                            alivefile = update_alive()
-                            time.sleep(3)
+                            alive_file = update_alive(duration, frames)
+                            time.sleep(2)
 
                     if cancelled:
                         render["outcome"] = "cancelled"
@@ -316,11 +330,10 @@ while True:
         except Exception as e:
             print(str(e))
             print('Job failed!')
-            render["error"] = str(e)
             save_job(error_path)
 
         cleanup(setting_output_abs)
-        cleanup(alivefile)
+        cleanup(alive_file)
         if os.path.exists(file) and job_hash == file_hash(file):
             cleanup(file)
 
