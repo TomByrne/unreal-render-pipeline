@@ -6,6 +6,7 @@ import os
 import getpass
 import subprocess
 import shlex
+import base64
 from pathlib import Path
 import random
 import datetime
@@ -25,6 +26,8 @@ cwd = os.getcwd().replace("\\", "/")
 if username == "tombyrne":
     todo_path = "1_todo_dev"
 
+default_width = 1920
+default_height = 1080
 default_attempts = 2
 default_output_format = '{{scene_name}}//{{sequence_name}}//{{date}}//{sequence_name}.{frame_number}'
 default_output_path  = 'X://AWS_ReInvent_2021//GoogleDrive//Unreal_Output//'
@@ -61,6 +64,21 @@ while True:
             attempts = data.get("attempts")
             if attempts == None:
                 attempts = default_attempts
+
+            width = data.get("width")
+            if width == None:
+                width = default_width
+            height = data.get("height")
+            if height == None:
+                height = default_height
+
+            scale = data.get("scale")
+            if scale != None:
+                width = round(width * scale)
+                height = round(height * scale)
+
+            resolution_bytes = width.to_bytes(4, byteorder="little") + height.to_bytes(4, byteorder="little")
+            resolution_base64 = base64.b64encode(resolution_bytes).decode("utf-8").upper()
 
                 
             ## Resolve UE project file
@@ -99,6 +117,10 @@ while True:
                 
                 value = value.replace("{{output_path}}", output_path)
                 value = value.replace("{{output_format}}", output_format)
+                
+                value = value.replace("{{width}}", str(width))
+                value = value.replace("{{height}}", str(height))
+                value = value.replace("{{resolution_base64}}", resolution_base64)
 
                 if start_frame != None:
                     value = value.replace("{{start_frame}}", str(start_frame))

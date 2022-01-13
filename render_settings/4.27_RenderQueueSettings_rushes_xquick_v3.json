@@ -271,6 +271,13 @@
 					"FileNameFormat": {
 						"__Type": "StrProperty",
 						"__Value": "{{output_format}}"
+					},
+					"OutputResolution": {
+						"__Type": "StructProperty",
+						"__StructName": "IntPoint",
+						"__Value": {
+							"Data": "Base64:{{resolution_base64}}"
+						}
 					}
 				}
 			}
