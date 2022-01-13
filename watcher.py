@@ -143,9 +143,7 @@ while True:
                 height = round(height * scale)
 
             resolution_bytes = width.to_bytes(4, byteorder="little") + height.to_bytes(4, byteorder="little")
-            resolution_base64 = base64.b64encode(resolution_bytes).decode("utf-8").upper()
-
-            
+            resolution_base64 = base64.b64encode(resolution_bytes).decode("utf-8")
                 
             ## Resolve UE project file
             project = data.get('project')
