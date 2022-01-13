@@ -107,7 +107,7 @@ while True:
             newalive = todo_path + "/" + jobname + token_replace(alivefile_suffix)
             if newalive == alivefile:
                 Path(alivefile).touch()
-                return
+                return newalive
 
             if alivefile != None and os.path.exists(alivefile):
                 os.remove(alivefile)
