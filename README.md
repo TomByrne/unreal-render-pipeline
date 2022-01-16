@@ -25,6 +25,8 @@ To render multiple at once, put this checkout on a shared network drive and run 
 - **width** - Explicitly control the width of the output frame. Will default to the `default_width` value in `watcher.py` if unspecified (1920).
 - **height** - Explicitly control the height of the output frame. Will default to the `default_height` value in `watcher.py` if unspecified (1080).
 - **scale** - Apply a scale factor to both the width and height of the output frame.
+- **start_frame** - Set the first frame to export (zero based).
+- **end_frame** - Set the last frame to export (zero based).
 
 ## Text file tokens
 The `cmd` and `render_settings` filesare all the information provided to UE to do the render, so they must contain swappable tokens to allow the project/scene/sequence values to be sent through.

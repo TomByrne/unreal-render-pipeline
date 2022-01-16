@@ -81,7 +81,7 @@ while True:
         setting_output_abs = None
         project = None
         
-        def token_replace(value, start_frame=0, settings=None):
+        def token_replace(value, start_frame=None, end_frame=None, settings=None):
             value = value.replace("{{worker}}", username)
             value = value.replace("{{date}}", date)
 
@@ -100,9 +100,14 @@ while True:
                 value = value.replace("{{height}}", str(height))
                 value = value.replace("{{resolution_base64}}", resolution_base64)
 
-            if start_frame != None:
-                value = value.replace("{{start_frame}}", str(start_frame))
-                value = value.replace("{{custom_frame_range}}", str( 1 if start_frame != 0 else 0))
+            custom_range = "1" if start_frame != None or end_frame != None else "0"
+            value = value.replace("{{custom_frame_range}}", custom_range)
+
+            start_frame = str(start_frame) if start_frame != None else "0"
+            value = value.replace("{{start_frame}}", str(start_frame))
+
+            end_frame = str(end_frame) if end_frame != None else "100000000"
+            value = value.replace("{{end_frame}}", str(end_frame))
 
             if settings != None:
                 value = value.replace("{{render_settings}}", settings)
@@ -194,6 +199,10 @@ while True:
             if not os.path.exists(sequence_path):
                 raise Exception('Failed to locate sequence asset: {}'.format(sequence_path))
 
+            # Start end frame
+            start_frame = data.get('start_frame')
+            end_frame = data.get('end_frame')
+            total_frame = end_frame - start_frame if start_frame != None and end_frame != None else None
             
             ## Find output path
             output_path = data.get("output")
@@ -240,10 +249,13 @@ while True:
 
                 while remaining_attempts > 0:
 
-                    skip_frames = 0
+                    real_start_frame = start_frame
                     if setting_input != settings_configs[0]:
-                        skip_frames = get_output_files_since(last_render_start)
-                        print("Resuming render from frame: {}".format(skip_frames))
+                        skip_frame = get_output_files_since(last_render_start)
+
+                        if total_frame == None or skip_frame < total_frame:
+                            real_start_frame = real_start_frame + skip_frame if real_start_frame != None else skip_frame
+                            print("Resuming render from frame: {}".format(start_frame))
 
                     remaining_attempts = remaining_attempts - 1
 
@@ -256,7 +268,7 @@ while True:
                     with open(setting_input) as f:
                         settings_str = f.read()
                     
-                    settings_str = token_replace(settings_str, skip_frames)
+                    settings_str = token_replace(settings_str, real_start_frame, end_frame)
                     
                     ## Save settings file into project
                     setting_output = "{}/{}.utxt".format(settings_asset_path, id.replace(".", "_"))
@@ -278,7 +290,7 @@ while True:
                     with open(cmd_input) as f:
                         cmd_str = f.read()
                         
-                    cmd_str = token_replace(cmd_str, skip_frames, setting_output)
+                    cmd_str = token_replace(cmd_str, real_start_frame, end_frame, setting_output)
                     cmd_str = cmd_str.replace("\n", " ")
 
                     print('Beginning export: {}'.format(cmd_str))

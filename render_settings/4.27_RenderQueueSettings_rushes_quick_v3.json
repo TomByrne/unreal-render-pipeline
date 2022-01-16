@@ -260,7 +260,7 @@
 					},
 					"CustomEndFrame": {
 						"__Type": "IntProperty",
-						"__Value": 10000000
+						"__Value": {{end_frame}}
 					},
 					"OutputDirectory": {
 						"__Type": "StructProperty",
