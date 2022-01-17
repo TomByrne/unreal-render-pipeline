@@ -41,7 +41,8 @@ Tokens are in double moustache syntax:
 - **{{date}}** - Datestamp in `"%Y.%m.%d"` format (e.g. 2022.02.31)
 - **{{output_path}}** - Absolute path to output folder, with all tokens resolved.
 - **{{output_format}}** - Output file name, with all tokens resolved.
-- **{{start_frame}}** - The frame to begin exporting from, mostly used to restart failed exports.
+- **{{start_frame}}** - The first frame to export, defaults to zero.
+- **{{end_frame}}** - The last frame to export, gets ignored if more than sequence length, defaults to a very big number (100000000).
 - **{{custom_frame_range}}** - Integer boolean flag to indicate whether a custom start frame is in use.
 - **{{render_settings}}** - Absolute path to the generated render settings file.
 - **{{width}}** - Width of the output frame
