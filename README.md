@@ -29,9 +29,9 @@ To render multiple at once, put this checkout on a shared network drive and run 
 - **end_frame** - Set the last frame to export (zero based).
 
 ## Text file tokens
-The `cmd` and `render_settings` filesare all the information provided to UE to do the render, so they must contain swappable tokens to allow the project/scene/sequence values to be sent through.
+The `cmd` and `render_settings` files are all the information provided to UE to do the render, so they must contain swappable tokens to allow the dynamic values to be sent through.
 
-Tokens are in double moustache syntax:
+Tokens are in double moustache syntax.
 
 - **{{project}}** - Absolute path to project's `.uproject` file.
 - **{{scene}}** - Relative path to the scene asset within the Content folder.
@@ -48,3 +48,6 @@ Tokens are in double moustache syntax:
 - **{{width}}** - Width of the output frame
 - **{{height}}** - Height of the output frame
 - **{{resolution_base64}}** - The dimensions of the output frame must be based through in the settings template encoded as base64.
+
+
+> Note, Unreal supports single moustache tokens in a few places. These won't be resolved in this tool, but will be retained for the Unreal exporter to resolve.
