@@ -28,14 +28,17 @@ alivefile_timeout = 120 # secs
 username = getpass.getuser()
 cwd = os.getcwd().replace("\\", "/")
 
+dev_mode = False
+
 if username == "tombyrne":
     todo_path = "1_todo_dev"
+    dev_mode = True
 
 default_width = 1920
 default_height = 1080
 default_attempts = 2
-default_output_format = '{{scene_name}}//{{sequence_name}}//{{date}}//{sequence_name}.{frame_number}'
-default_output_path  = 'X://AWS_ReInvent_2021//GoogleDrive//Unreal_Output//'
+default_output_format = '{{scene_name}}/{{sequence_name}}/{{date}}/{sequence_name}.{frame_number}'
+default_output_path  = 'X:/AWS_ReInvent_2021/GoogleDrive/Unreal_Output/'
 
 print("---------------- \nUnreal RenderDrop v0.7 \n----------------")
 
@@ -53,6 +56,11 @@ def file_hash(path):
     hash = hashlib.md5(path_read.read().encode("utf-8")).hexdigest()
     path_read.close()
     return hash
+
+def json_escape(str):
+    str = str.replace('\\', '\\\\')
+    str = str.replace('"', '\\"')
+    return str
 
 while True:
     job_files = sorted(glob.glob("{}/*.json".format(todo_path)))
@@ -208,10 +216,14 @@ while True:
             output_path = data.get("output")
             if output_path == None:
                 output_path = default_output_path
+
+            output_path = json_escape(output_path)
             
             output_format = data.get("output_format")
             if output_format == None:
                 output_format = default_output_format
+
+            output_format = json_escape(output_format)
                 
             output_path = token_replace(output_path)
             output_format = token_replace(output_format)
@@ -343,7 +355,9 @@ while True:
             print('Job failed!')
             save_job(error_path)
 
-        cleanup(setting_output_abs)
+        if not dev_mode or render["outcome"] != "failed":
+            cleanup(setting_output_abs)
+
         cleanup(alive_file)
         if os.path.exists(file) and job_hash == file_hash(file):
             cleanup(file)
