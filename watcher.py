@@ -31,7 +31,7 @@ alivefile_timeout = 120 # secs
 username = getpass.getuser()
 cwd = os.getcwd().replace("\\", "/")
 
-dev_mode = os.getenv('DEV_MODE') != "1"
+dev_mode = os.getenv('DEV_MODE') == "1"
 
 default_width = int(os.getenv('DEFAULT_WIDTH') or '1920')
 default_height = int(os.getenv('DEFAULT_HEIGHT') or '1080')
