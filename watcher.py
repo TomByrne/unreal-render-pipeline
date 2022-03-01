@@ -12,11 +12,14 @@ from pathlib import Path
 import random
 import datetime
 import re
+from dotenv import load_dotenv
 
-todo_path = "1_todo"
-cancelled_path = "2_cancelled"
-done_path = "3_done"
-error_path = "4_failed"
+load_dotenv()
+
+jobs_path = os.path.abspath(os.getenv('PATH_JOBS') or "../jobs")
+cancelled_path = os.path.abspath(os.getenv('PATH_CANCELLED') or "../jobs/cancelled")
+done_path = os.path.abspath(os.getenv('PATH_DONE') or "../jobs/done")
+error_path = os.path.abspath(os.getenv('PATH_FAILED') or "../jobs/failed")
 settings_path = "render_settings"
 cmd_path = "cmds"
 settings_asset_path = "MovieRenderPipeline"
@@ -28,21 +31,27 @@ alivefile_timeout = 120 # secs
 username = getpass.getuser()
 cwd = os.getcwd().replace("\\", "/")
 
-dev_mode = False
+dev_mode = os.getenv('DEV_MODE') != "1"
 
-if username == "tombyrne":
-    todo_path = "1_todo_dev"
-    dev_mode = True
+default_width = int(os.getenv('DEFAULT_WIDTH') or '1920')
+default_height = int(os.getenv('DEFAULT_HEIGHT') or '1080')
+default_attempts = int(os.getenv('DEFAULT_ATTEMPTS') or '2')
+default_output_format = os.getenv('DEFAULT_OUT_FORMAT') or '{{scene_name}}/{{sequence_name}}/{{date}}/{sequence_name}.{frame_number}'
+default_output_path  = os.getenv('DEFAULT_OUT_PATH') or os.path.abspath('../output')
 
-default_width = 1920
-default_height = 1080
-default_attempts = 2
-default_output_format = '{{scene_name}}/{{sequence_name}}/{{date}}/{sequence_name}.{frame_number}'
-default_output_path  = 'X:/AWS_ReInvent_2021/GoogleDrive/Unreal_Output/'
+print("---------------- \nUnreal RenderDrop v0.8 \n----------------")
 
-print("---------------- \nUnreal RenderDrop v0.7 \n----------------")
+print('Watching folder for jobs: "{}"'.format(jobs_path))
 
-print('Watching folder for jobs: "{}"'.format(todo_path))
+def mkdir(path):
+    if not os.path.exists(path):
+        Path(path).mkdir(parents=True, exist_ok=True)
+
+# Create job folders
+mkdir(jobs_path)
+mkdir(cancelled_path)
+mkdir(done_path)
+mkdir(error_path)
 
 def cleanup(path):
     if path != None and os.path.exists(path):
@@ -63,12 +72,12 @@ def json_escape(str):
     return str
 
 while True:
-    job_files = sorted(glob.glob("{}/*.json".format(todo_path)))
+    job_files = sorted(glob.glob("{}/*.json".format(jobs_path)))
     for file in job_files:
-        job_file = file[len(todo_path) + 1:len(file)]
+        job_file = file[len(jobs_path) + 1:len(file)]
         job_name = re.search('^(.*?)(_[\d]+)?.json$', job_file).group(1) # strip trailing '_0', for when job are re-added from complete folder
 
-        alive_files = glob.glob("{}/{}*".format(todo_path, job_name))
+        alive_files = glob.glob("{}/{}*".format(jobs_path, job_name))
         alive_files = list(filter(lambda f : f != file and os.path.splitext(f)[1] != ".json", alive_files))
         alive_cutoff = time.time() - alivefile_timeout
         if len(alive_files) > 0:

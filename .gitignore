@@ -7,6 +7,8 @@
 node_modules/
 dist/
 
+.env
+
 1_todo/
 1_todo_dev/
 2_cancelled/
