@@ -159,6 +159,7 @@ while True:
         
         
         try:
+            render = None
             
             alive_file = update_alive()
 
@@ -195,7 +196,11 @@ while True:
             ## Resolve UE project file
             project = data.get('project')
             if project.find(".uproject") == -1:
-                project = glob.glob("{}/*.uproject".format(project))[0]
+                projfiles = glob.glob("{}/*.uproject".format(project))
+                if len(projfiles) == 0:
+                    raise Exception('Failed to find project file in : {}'.format(project))
+
+                project = projfiles[0]
                 print('Found project file: "{}"'.format(project))
 
             project_dir = Path(project).parent.absolute()
@@ -265,6 +270,7 @@ while True:
                     "width": width,
                     "height": height,
                     "errors": [],
+                    "outcome": None,
                 }
                 renders.append(render)
 
@@ -350,6 +356,7 @@ while True:
                     else:
                         render["errors"].append({
                             "code": returncode,
+                            "stdout": proc.stdout.read(),
                             "stderr": proc.stderr.read()
                         })
                         render["outcome"] = "failed"
@@ -364,7 +371,7 @@ while True:
             print('Job failed!')
             save_job(error_path)
 
-        if not dev_mode or render["outcome"] != "failed":
+        if not dev_mode or (render != None and render["outcome"] != "failed"):
             cleanup(setting_output_abs)
 
         cleanup(alive_file)
