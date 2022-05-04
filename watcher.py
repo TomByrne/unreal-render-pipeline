@@ -25,10 +25,11 @@ cmd_path = "cmds"
 settings_asset_path = "MovieRenderPipeline"
 cmd_template = "cmd_template.ps1"
 
-alivefile_suffix = "   [ {{worker}} ]   {{duration}}s {{frames}}f"
+alivefile_suffix = "   [ {{worker}} ]   {{duration}}s {{frames}}f "
 alivefile_timeout = 120 # secs
 
 username = getpass.getuser()
+username_safe = username.replace(" ", "_")
 cwd = os.getcwd().replace("\\", "/")
 
 dev_mode = os.getenv('DEV_MODE') == "1"
@@ -93,13 +94,13 @@ while True:
 
         date = datetime.date.today().strftime("%Y.%m.%d")
 
-        id = "{}.{}.{:03d}".format(username, job_name, random.randint(0, 999))
+        id = "{}.{}.{:03d}".format(username_safe, job_name, random.randint(0, 999))
 
         setting_output_abs = None
         project = None
         
         def token_replace(value, start_frame=None, end_frame=None, settings=None):
-            value = value.replace("{{worker}}", username)
+            value = value.replace("{{worker}}", username_safe)
             value = value.replace("{{date}}", date)
 
             if project != None:
@@ -247,7 +248,7 @@ while True:
 
             def get_output_files_since(time):
                 try:
-                    return len([f for f in os.listdir(output_dir) if os.path.getmtime(os.path.join(output_dir, f)) > time])
+                    return len([f for f in os.listdir(output_dir) if os.path.getctime(os.path.join(output_dir, f)) > time])
                 except:
                     return 0
                 
@@ -264,7 +265,7 @@ while True:
                 
                 render = {
                     "settings": setting_input,
-                    "worker": username,
+                    "worker": username_safe,
                     "time": last_render_start,
                     "output": str(output_dir.absolute()),
                     "width": width,
@@ -327,7 +328,8 @@ while True:
                     while returncode == None:
                         returncode = proc.poll()
                         duration = time.time() - last_render_start
-                        frames = get_output_files_since(last_render_start)
+                        # frames = get_output_files_since(last_render_start)
+                        frames = get_output_files_since(0)
                         render["duration"] = duration
                         render["frames_done"] = frames
 
