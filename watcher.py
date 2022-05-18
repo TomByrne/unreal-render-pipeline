@@ -26,7 +26,7 @@ settings_asset_path = "MovieRenderPipeline"
 cmd_template = "cmd_template.ps1"
 
 alivefile_suffix = "   [ {{worker}} ]   {{duration}}s {{frames}}f "
-alivefile_timeout = 120 # secs
+alivefile_timeout = 5 * 60 # secs
 
 username = getpass.getuser()
 username_safe = username.replace(" ", "_")
